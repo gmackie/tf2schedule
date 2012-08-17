@@ -1,0 +1,500 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"promog",
+				"promoGroup"
+			],
+			[
+				"re",
+				"required=\"false\"	required"
+			],
+			[
+				"ign",
+				"ignore"
+			],
+			[
+				"check",
+				"checkAth"
+			],
+			[
+				"ignore",
+				"ignoreDates"
+			],
+			[
+				"get",
+				"getElementById"
+			],
+			[
+				"start",
+				"startDate"
+			],
+			[
+				"creat",
+				"createUser"
+			],
+			[
+				"G",
+				"GROUP"
+			],
+			[
+				"struck",
+				"structKeyExists	fn. (cfscript)"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"contents": "<?PHP\n\n // --------------------------------------------- Database Settings -----------\n\n // MySQL host\n define('DB_HOST', '127.0.0.1');\n\n // MySQL username\n define('DB_USER', 'tf2scheduler');\n\n // MySQL password\n define('DB_PASS', 'tf2password');\n\n // MySQL database name\n define('DB_DBNAME', 'tf2schedule');\n\n // ------------------------------------------------ Server Details -----------\n\n // Command to use to send player messages\n define('RCON_COMMAND', 'admin_msay \"%s\" \"%s\"');\n\n // --------------------------------------------- Feature Selection -----------\n\n\n?>\n",
+			"file": "config.php",
+			"file_size": 2779,
+			"file_write_time": 1345054587000000,
+			"settings":
+			{
+				"buffer_size": 569,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "daemon.php",
+			"settings":
+			{
+				"buffer_size": 3296,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"contents": "#!/usr/bin/php -q\n<?PHP\n\n require_once(dirname(__FILE__) . '/config.php');\n require_once(dirname(__FILE__) . '/inc/rcon.class.php');\n require_once(dirname(__FILE__) . '/inc/database.php');\n\n define('SCRIPT_HEAD1', 'mapchange.php v0.1');\n define('SCRIPT_HEAD3', 'Changes maps on a specified');\n\n require(dirname(__FILE__) . '/inc/cliheader.php');\n\n $sql = 'SELECT server_id, server_ip, server_port, server_rcon FROM servers';\n $res = mysql_query($sql);\n\n while ($row = mysql_fetch_assoc($res)) {\n\n  echo str_pad($row['server_ip'] . ':' . $row['server_port'], 80, '-', STR_PAD_BOTH);\n  echo \"\\n\\n\";\n\n  if (empty($row['server_rcon'])) {\n   echo \"No RCON password specified. Skipping.\\n\";\n   continue;\n  }\n\n  $rcon = new Rcon($row['server_ip'], $row['server_port'], $row['server_rcon']);\n  foreach (explode(\"\\n\", $rcon->getStatus()) as $line) {\n   if (preg_match('/^players : ([0-9]+)/', $line, $m)) {\n    $players = (int) $m[1];\n   } else if (preg_match('/^map\\s*: ([^\\s]+) at/', $line, $m)) {\n    $map = $m[1];\n   } else if (preg_match('/^hostname\\s*:\\s*(.*?)\\s*$/', $line, $m)) {\n    $hostname = $m[1];\n   }\n  }\n\n  if (isset($hostname)) {\n   $sql = 'UPDATE servers SET server_name = \\'' . s($hostname) . '\\' WHERE server_id = ' . $row['server_id'];\n   mysql_query($sql);\n  }\n\n  if (!isset($players)) {\n   echo \"Could not determine the number of players. Skipping.\\n\";\n   continue;\n  } else if ($players > 0) {\n   echo \"Players on the server; not interfering.\\n\";\n   continue;\n  }\n\n  $sql = 'SELECT map_name, SUM(TIMESTAMPDIFF(MINUTE, session_starttime, session_endtime)) AS time FROM maps NATURAL JOIN games NATURAL JOIN sessions GROUP BY map_name ORDER BY time DESC LIMIT 0,10';\n  $res = mysql_query($sql);\n\n  $maps = array();\n  while ($row = mysql_fetch_assoc($res)) {\n   if ($row['map_name'] == $map) { continue; }\n\n   $maps[] = $row['map_name'];\n  }\n\n  echo \"Currently $players players on map $map.\\n\";\n  $nextmap = $maps[rand(0, count($maps)-1)];\n  echo \"Selected map $nextmap. Changing... \";\n  $rcon->execute('changelevel ' . $nextmap);\n  echo \"Done\\n\\n\";\n }\n\n echo str_repeat('-', 80), \"\\n\";\n\n?>\n",
+			"file": "mapchange.php",
+			"file_size": 2106,
+			"file_write_time": 1345054587000000,
+			"settings":
+			{
+				"buffer_size": 2102,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "updateservers.php",
+			"settings":
+			{
+				"buffer_size": 742,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"settings":
+			{
+				"buffer_size": 0,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "www/inc/footer.php",
+			"settings":
+			{
+				"buffer_size": 371,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"contents": "<?PHP\n\nrequire_once(dirname(__FILE__) . '/config.php');\nrequire_once(STATS_DIR . '/inc/database.php');\n\n?>\n<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n<html>\n <head>\n  <title>TF2 Stats :: <?PHP echo TITLE; ?></title>\n  <link rel=\"stylesheet\" href=\"res/style.css\" type=\"text/css\">\n </head>\n <body>\n  <h1 id=\"header\">TF2 Stats</h1>\n  <div id=\"menu\">\n   <ul>\n    <li id=\"first\"><a href=\"<?PHP echo URL_BASE; ?>\">Overview</a></li>\n    <li><a href=\"<?PHP echo URL_BASE; ?>servers.php\">Serversq</a></li>\n    <li><a href=\"<?PHP echo URL_BASE; ?>maps.php\">Maps</a></li>\n<?PHP if (ADMIN_ENABLED) { ?>    <li><a href=\"<?PHP echo URL_BASE; ?>admin.php\">Admin</a></li> <?PHP } ?>\n   </ul>\n  </div>\n  <div id=\"content\">\n<?PHP\n\n $sql = 'SELECT COUNT(*) FROM config WHERE config_key = \\'updating\\' AND config_value = \\'true\\'';\n $res = mysql_query($sql);\n $num = mysql_result($res, 0);\n\n if ($num > 0) {\n  echo '<div id=\"updating\">TF2 Stats is currently being updated. Please check back later for the latest stats.</div>';\n }\n\n?>\n",
+			"file": "www/inc/header.php",
+			"file_size": 1133,
+			"file_write_time": 1345053375000000,
+			"settings":
+			{
+				"buffer_size": 1062,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"command_palette":
+	{
+		"height": 392.0,
+		"selected_items":
+		[
+			[
+				"p",
+				"Package Control: Install Package"
+			],
+			[
+				"pac",
+				"Package Control: Install Package"
+			],
+			[
+				"pack",
+				"Package Control: Install Package"
+			],
+			[
+				"Pack",
+				"Package Control: Discover Packages"
+			]
+		],
+		"width": 449.0
+	},
+	"console":
+	{
+		"height": 125.0
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/Users/gmackie/dev/TF2Stats/inc/database.php",
+		"/Users/gmackie/dev/TF2Stats/inc/daemon.class.php",
+		"/Users/gmackie/dev/TF2Stats/daemon.php",
+		"/Users/gmackie/dev/TF2Stats/inc/server.class.php",
+		"/Users/gmackie/dev/TF2Stats/inc/rcon.class.php",
+		"/Users/gmackie/dev/TF2Stats/www/deathmap.php",
+		"/Users/gmackie/dev/tf2schedule/www/inc/header.php",
+		"/Users/gmackie/dev/tf2schedule/www/temp.php",
+		"/Users/gmackie/dev/tf2schedule/www/maps.php",
+		"/Users/gmackie/dev/tf2schedule/www/map.php",
+		"/Users/gmackie/dev/tf2schedule/inc/parser/parser.php",
+		"/Applications/MAMP/conf/apache/extra/httpd-vhosts.conf",
+		"/Applications/MAMP/conf/apache/httpd.conf",
+		"/private/etc/apache2/extra/httpd-vhosts.conf",
+		"/private/etc/apache2/httpd.conf",
+		"/Users/gmackie/dev/ua/v5/scheduled/vip/customerLog.cfm",
+		"/Users/gmackie/dev/ua/v5/config/app.config.dev.cfm",
+		"/Users/gmackie/dev/ua/v5/cfc/delegates/MobileDelegate.cfc",
+		"/Users/gmackie/dev/ua/v5/scheduled/vip/processVIPevents.cfm",
+		"/Users/gmackie/dev/ua/v5/cfc/plugins/VIPeventQueue/VIPQueue.cfc",
+		"/Users/gmackie/dev/ua/v5/www/siteadmin/cfc/services/PromotionService.cfc",
+		"/Users/gmackie/dev/ua/v5/src/flex/V4ReportAdminAssets/src/views/groupdiscounts/ManageEmployeeDetailWindow.mxml",
+		"/Users/gmackie/dev/ua/v5/tools/VIP/VIPlookup.js",
+		"/Users/gmackie/dev/ua/v5/tools/VIP/convertFDMS.cfm",
+		"/Users/gmackie/dev/ua/v5/src/flex/SiteManagerV5/src/SiteManagerV5-app.xml",
+		"/Users/gmackie/dev/ua/v5/scheduled/vip/groupManage.cfm",
+		"/Users/gmackie/dev/ua/v5/src/flex/V4ReportAdminAssets/src/views/promotions/PromotionDelegate.as",
+		"/Users/gmackie/.bash_profile",
+		"/Users/gmackie/dev/ua/v5/runtime/pruners/Include.cfc",
+		"/Users/gmackie/dev/ua/v5/cfc/ServiceAPI.cfc",
+		"/Users/gmackie/dev/ua/v5/runtime/pruners/fitguide/FitPromo.cfc",
+		"/Users/gmackie/.gitconfig"
+	],
+	"find":
+	{
+		"height": 35.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"80",
+			"8",
+			"80",
+			"res",
+			"dead",
+			"data",
+			"dump",
+			"createU",
+			"getvip",
+			"getvipOi",
+			"getvipO",
+			"viporder"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 6,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "config.php",
+					"settings":
+					{
+						"buffer_size": 569,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								565,
+								565
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "daemon.php",
+					"settings":
+					{
+						"buffer_size": 3296,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "mapchange.php",
+					"settings":
+					{
+						"buffer_size": 2102,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								289,
+								289
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 354.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "updateservers.php",
+					"settings":
+					{
+						"buffer_size": 742,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								742,
+								742
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"settings":
+					{
+						"buffer_size": 0,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "www/inc/footer.php",
+					"settings":
+					{
+						"buffer_size": 371,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								205,
+								205
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "www/inc/header.php",
+					"settings":
+					{
+						"buffer_size": 1062,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								535,
+								535
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 0.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"replace":
+	{
+		"height": 0.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+			[
+				"promo",
+				"src/flex/V4ReportAdminAssets/src/views/promotions/PromotionDelegate.as"
+			],
+			[
+				"promotion",
+				"www/siteadmin/cfc/services/PromotionService.cfc"
+			],
+			[
+				"servic",
+				"cfc/ServiceAPI.cfc"
+			]
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 500.0,
+		"selected_items":
+		[
+			[
+				"",
+				"/Users/gmackie/dev/tf2schedule/TF2Stats.sublime-project"
+			]
+		],
+		"width": 380.0
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 211.0,
+	"status_bar_visible": true
+}

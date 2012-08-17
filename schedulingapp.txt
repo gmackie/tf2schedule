@@ -1,0 +1,34 @@
+Event Scheduling App
+--------------------
+
+Required
+
+* automatic !setnextmap on map load (duh)
+* ability to pick maps from the ones on a selected server
+	- drop-down list v. 'browse' button
+* one to ten maps per event
+* automatic gamemode detection + time per map
+	- default TF2M gameday times
+* time override option
+	- drop-down of orphaned stage, fine tuning, etc. v. input box of time override
+	- input box should be automatically filled on map selection
+* customising map order
+	- drag-and-drop (a la Steam wishlist) v. input box
+
+
+
+
+
+
+Optional
+
+* Steam group integration
+	- automatic Steam group event creation
+* multiple event management
+	- automatically creates Steam events and sets map rotation on date+time specified upon creation
+* automated warnings
+	- when same map picked twice
+	- when author's map has been scheduled on same server in the past week
+* automatic map uploading 
+	- more dependent on selecting maps by browse button
+* multiple server management
